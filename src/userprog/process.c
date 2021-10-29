@@ -17,7 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-
+#include "threads/malloc.h"
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -88,6 +88,8 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+//  int x = 500000;
+ while(true);
   return -1;
 }
 
@@ -142,6 +144,7 @@ typedef uint16_t Elf32_Half;
 /* For use with ELF types in printf(). */
 #define PE32Wx PRIx32   /* Print Elf32_Word in hexadecimal. */
 #define PE32Ax PRIx32   /* Print Elf32_Addr in hexadecimal. */
+
 #define PE32Ox PRIx32   /* Print Elf32_Off in hexadecimal. */
 #define PE32Hx PRIx16   /* Print Elf32_Half in hexadecimal. */
 
@@ -195,7 +198,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, const char*);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -300,9 +303,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
           break;
         }
     }
-
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, file_name))
     goto done;
 
   /* Start address. */
@@ -313,6 +315,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+ 
+//hex_dump(*esp, *esp, 128, true);
+
   return success;
 }
 
@@ -321,7 +326,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 static bool install_page (void *upage, void *kpage, bool writable);
 
 /* Checks whether PHDR describes a valid, loadable segment in
-   FILE and returns true if so, false otherwise. */
+   FILE and reurns true if so, false otherwise. */
 static bool
 validate_segment (const struct Elf32_Phdr *phdr, struct file *file) 
 {
@@ -427,7 +432,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp, const char * file_name) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -440,7 +445,49 @@ setup_stack (void **esp)
         *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
-    }
+   }
+  char** tokens = malloc(30 * (sizeof(char*)));
+  char** address = malloc(30 * sizeof(char*));
+  int argc = 0;
+  char* returns;
+  char arr[] = "echo hello there 1 2 3 4 5";
+   char* save = arr;
+ while((returns = strtok_r(save, " ", &save))){
+	tokens[argc] = returns;
+	argc += 1;
+  }
+ for(int i = argc-1; i>=0; i--){
+	*esp -= strlen(tokens[i]) + 1;
+	address[i] = *esp;
+	memcpy(*esp, tokens[i], strlen(tokens[i]) + 1);
+
+}
+
+//char* zero = 0;
+ int mod = (unsigned int) *esp % 4;
+while(mod){
+	*esp -= 1;
+	memset(*esp, 0, 1);
+	mod--;
+ } 
+
+address[argc] = 0;
+
+ for(int i=argc; i>=0; i--){
+	*esp -= sizeof(char *);
+	memcpy(*esp, &address[i], sizeof(char *));
+
+} 
+ memcpy(*esp - sizeof(char **), esp, sizeof(char **));
+ *esp -= sizeof(char **);
+ 
+ *esp -= sizeof(int);
+//char* tempint = (char *)(argc);
+memcpy(*esp, &argc, sizeof(int));  
+*esp -= sizeof(void *);
+memset(*esp, 0, sizeof(void *));
+
+//hex_dump(*esp, *esp, 128, true);
   return success;
 }
 
