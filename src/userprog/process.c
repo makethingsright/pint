@@ -217,7 +217,16 @@ load (const char *file_name, void (**eip) (void), void **esp)
   off_t file_ofs;
   bool success = false;
   int i;
-
+  char** tokens = malloc(30 * (sizeof(char*)));
+  char** address = malloc(30 * sizeof(char*));
+  int argc = 0;
+  char* returns;
+  char arr[] = "echo hello there 1 2 3 4 5";
+   char* save = arr;
+ while((returns = strtok_r(save, " ", &save))){
+	tokens[argc] = returns;
+	argc += 1;
+  }
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -303,13 +312,46 @@ load (const char *file_name, void (**eip) (void), void **esp)
           break;
         }
     }
+	
   /* Set up stack. */
-  if (!setup_stack (esp, file_name))
+  if (!setup_stack (esp))
     goto done;
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
+	
+ for(int i = argc-1; i>=0; i--){
+	*esp -= strlen(tokens[i]) + 1;
+	address[i] = *esp;
+	memcpy(*esp, tokens[i], strlen(tokens[i]) + 1);
 
+}
+
+//char* zero = 0;
+ int mod = (unsigned int) *esp % 4;
+while(mod){
+	*esp -= 1;
+	memset(*esp, 0, 1);
+	mod--;
+ } 
+
+address[argc] = 0;
+
+ for(int i=argc; i>=0; i--){
+	*esp -= sizeof(char *);
+	memcpy(*esp, &address[i], sizeof(char *));
+
+} 
+ memcpy(*esp - sizeof(char **), esp, sizeof(char **));
+ *esp -= sizeof(char **);
+ 
+ *esp -= sizeof(int);
+//char* tempint = (char *)(argc);
+memcpy(*esp, &argc, sizeof(int));  
+*esp -= sizeof(void *);
+memset(*esp, 0, sizeof(void *));
+
+//hex_dump(*esp, *esp, 128, true);
   success = true;
 
  done:
@@ -320,7 +362,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   return success;
 }
-
 /* load() helpers. */
 
 static bool install_page (void *upage, void *kpage, bool writable);
@@ -432,7 +473,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp, const char * file_name) 
+setup_stack (void **esp) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -446,48 +487,6 @@ setup_stack (void **esp, const char * file_name)
       else
         palloc_free_page (kpage);
    }
-  char** tokens = malloc(30 * (sizeof(char*)));
-  char** address = malloc(30 * sizeof(char*));
-  int argc = 0;
-  char* returns;
-  char arr[] = "echo hello there 1 2 3 4 5";
-   char* save = arr;
- while((returns = strtok_r(save, " ", &save))){
-	tokens[argc] = returns;
-	argc += 1;
-  }
- for(int i = argc-1; i>=0; i--){
-	*esp -= strlen(tokens[i]) + 1;
-	address[i] = *esp;
-	memcpy(*esp, tokens[i], strlen(tokens[i]) + 1);
-
-}
-
-//char* zero = 0;
- int mod = (unsigned int) *esp % 4;
-while(mod){
-	*esp -= 1;
-	memset(*esp, 0, 1);
-	mod--;
- } 
-
-address[argc] = 0;
-
- for(int i=argc; i>=0; i--){
-	*esp -= sizeof(char *);
-	memcpy(*esp, &address[i], sizeof(char *));
-
-} 
- memcpy(*esp - sizeof(char **), esp, sizeof(char **));
- *esp -= sizeof(char **);
- 
- *esp -= sizeof(int);
-//char* tempint = (char *)(argc);
-memcpy(*esp, &argc, sizeof(int));  
-*esp -= sizeof(void *);
-memset(*esp, 0, sizeof(void *));
-
-//hex_dump(*esp, *esp, 128, true);
   return success;
 }
 
