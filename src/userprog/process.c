@@ -217,6 +217,16 @@ load (const char *file_name, void (**eip) (void), void **esp)
   off_t file_ofs;
   bool success = false;
   int i;
+  char** tokens = malloc(30 * (sizeof(char*)));
+  char** address = malloc(30 * sizeof(char*));
+  int argc = 0;
+  char* returns;
+  char arr[] = "echo hello ";
+   char* save = file_name;
+ while((returns = strtok_r(save, " ", &save))){
+	tokens[argc] = returns;
+	argc += 1;
+  }
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -309,16 +319,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
- char** tokens = malloc(30 * (sizeof(char*)));
-  char** address = malloc(30 * sizeof(char*));
-  int argc = 0;
-  char* returns;
-  char arr[] = "echo hello ";
-   char* save = file_name;
- while((returns = strtok_r(save, " ", &save))){
-	tokens[argc] = returns;
-	argc += 1;
-  }
 	
  for(int i = argc-1; i>=0; i--){
 	*esp -= strlen(tokens[i]) + 1;
