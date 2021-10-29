@@ -88,8 +88,8 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-//  int x = 500000;
- while(true);
+ int x = 1000000;
+while(1);
   return -1;
 }
 
@@ -198,7 +198,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp, const char*);
+static bool setup_stack (void **esp);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -221,8 +221,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   char** address = malloc(30 * sizeof(char*));
   int argc = 0;
   char* returns;
-  char arr[] = "echo hello there 1 2 3 4 5";
-   char* save = arr;
+  char arr[] = "echo hello ";
+   char* save = file_name;
  while((returns = strtok_r(save, " ", &save))){
 	tokens[argc] = returns;
 	argc += 1;
