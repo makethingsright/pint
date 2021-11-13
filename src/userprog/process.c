@@ -89,7 +89,7 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
  int x = 1000000;
-while(1);
+while(x--);
   return -1;
 }
 
