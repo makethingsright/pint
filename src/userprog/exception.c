@@ -4,8 +4,7 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-#include "string.h"
-
+#include "userprog/syscall.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -145,23 +144,26 @@ page_fault (struct intr_frame *f)
   /* Count page faults. */
   page_fault_cnt++;
 
+  // Lily
+  // if (page_fault_cnt != 0)
+    // exit(-1);
+  if (!not_present)
+    exit(-1);
+
+  if (fault_addr == NULL || !is_user_vaddr(fault_addr) 
+    || !pagedir_get_page(thread_current()->pagedir, fault_addr))
+    exit(-1);
+
+  // Lily
+
   /* Determine cause. */
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
-  if(!user){
-     f->eip = (void (*) (void)) f->eax;
-     f->eax = 0xffffffff;
-     return ;
-  }
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
- char *save_ptr;
-	char *name = strtok_r(thread_current()->name, " ", &save_ptr);
-        printf("%s: exit(%d)\n", name, -1);
-
   printf ("Page fault at %p: %s error %s page in %s context.\n",
           fault_addr,
           not_present ? "not present" : "rights violation",
@@ -169,3 +171,4 @@ page_fault (struct intr_frame *f)
           user ? "user" : "kernel");
   kill (f);
 }
+
